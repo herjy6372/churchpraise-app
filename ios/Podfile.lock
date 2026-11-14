@@ -14,9 +14,9 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/pdfx/ios"
 
 SPEC CHECKSUMS:
-  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   pdfx: 77f4dddc48361fbb01486fa2bdee4532cbb97ef3
 
 PODFILE CHECKSUM: 1a63419e88e29a2f8bf4b3648bd9fbf46e3f9825
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.17.0
