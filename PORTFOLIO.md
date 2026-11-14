@@ -2,7 +2,8 @@
 > **개발 기간:** 2025.12 ~ 진행중 (개인 프로젝트)  
 > **플랫폼:** Android (Google Play Store 배포) / iOS  
 > **패키지명:** com.terablack.churchpraise  
-> **현재 버전:** 1.0.4
+> **현재 버전:** 1.0.4  
+> **저장소:** [github.com/herjy6372/churchpraise-app](https://github.com/herjy6372/churchpraise-app)
 
 ---
 
