@@ -7,6 +7,12 @@
 
 ---
 
+| 성경 | 새찬송가 | 예배문 |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/bible.jpg" width="240" alt="성경 탭"> | <img src="docs/screenshots/hymns.jpg" width="240" alt="새찬송가 탭"> | <img src="docs/screenshots/liturgy.jpg" width="240" alt="예배문 탭"> |
+
+---
+
 ## 💡 1. 프로젝트 소개
 
 교회 예배 및 찬양팀을 위한 **디지털 악보 뷰어 앱**입니다.  
