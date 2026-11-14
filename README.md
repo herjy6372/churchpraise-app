@@ -4,6 +4,8 @@
 
 자세한 소개는 [PORTFOLIO.md](PORTFOLIO.md)를 참고하세요.
 
+- 포트폴리오 사이트: [herjy6372.github.io/portfolio](https://herjy6372.github.io/portfolio/)
+
 ## 저장소에 포함되지 않은 파일
 
 저작권 문제로 다음 콘텐츠는 이 저장소에 포함하지 않습니다.
