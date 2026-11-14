@@ -6,6 +6,12 @@
 
 - 포트폴리오 사이트: [herjy6372.github.io/portfolio](https://herjy6372.github.io/portfolio/)
 
+## 스크린샷
+
+| 성경 | 새찬송가 | 예배문 |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/bible.jpg" width="240" alt="성경 탭"> | <img src="docs/screenshots/hymns.jpg" width="240" alt="새찬송가 탭"> | <img src="docs/screenshots/liturgy.jpg" width="240" alt="예배문 탭"> |
+
 ## 저장소에 포함되지 않은 파일
 
 저작권 문제로 다음 콘텐츠는 이 저장소에 포함하지 않습니다.
