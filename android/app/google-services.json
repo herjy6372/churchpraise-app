@@ -1,0 +1,71 @@
+{
+  "project_info": {
+    "project_number": "870682092391",
+    "firebase_url": "https://churchpraise-2b830-default-rtdb.firebaseio.com",
+    "project_id": "churchpraise-2b830",
+    "storage_bucket": "churchpraise-2b830.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:870682092391:android:8c24957cd9fdad59d005c2",
+        "android_client_info": {
+          "package_name": "com.terablack.churchpraise"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "870682092391-0fv63j299ov9l70tn79onancmkrjornr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.terablack.churchpraise",
+            "certificate_hash": "b8723542a2a06469b077936e055895477446bacd"
+          }
+        },
+        {
+          "client_id": "870682092391-qpkf9sc4rgsd7u4mq7lklmtr117lghcs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.terablack.churchpraise",
+            "certificate_hash": "ba505af9bcce1dfa3cdb1bd4cd289afed34ccf83"
+          }
+        },
+        {
+          "client_id": "870682092391-tbvh6oprr20qstcjvgfgbt727b4f32c3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.terablack.churchpraise",
+            "certificate_hash": "5045e5013d099b385b464e7d1d7ef9ccc5d93716"
+          }
+        },
+        {
+          "client_id": "870682092391-8a5u87o9h666tukgrpe8co1ipi9r56oh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgVjzTl-2vlcfcJpaOHkJb8u_2R_c2ug0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "870682092391-8a5u87o9h666tukgrpe8co1ipi9r56oh.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "870682092391-e4aiclj6e17tcgdf4scbb6jce4sfm9o0.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.terablack.churchpraise"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
