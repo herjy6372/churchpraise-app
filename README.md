@@ -8,9 +8,9 @@
 
 ## 스크린샷
 
-| 성경 | 새찬송가 | 예배문 |
-|:---:|:---:|:---:|
-| <img src="docs/screenshots/bible.jpg" width="240" alt="성경 탭"> | <img src="docs/screenshots/hymns.jpg" width="240" alt="새찬송가 탭"> | <img src="docs/screenshots/liturgy.jpg" width="240" alt="예배문 탭"> |
+| 성경 | 역본 선택 | 새찬송가 | 예배문 |
+|:---:|:---:|:---:|:---:|
+| <img src="docs/screenshots/bible-20261115.jpg" width="200" alt="성경 탭"> | <img src="docs/screenshots/versions-20261115.jpg" width="200" alt="성경 역본 선택"> | <img src="docs/screenshots/hymns-20261115.jpg" width="200" alt="새찬송가 탭"> | <img src="docs/screenshots/liturgy-20261115.jpg" width="200" alt="예배문 탭"> |
 
 ## 저장소에 포함되지 않은 파일
 
