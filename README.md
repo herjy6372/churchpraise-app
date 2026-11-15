@@ -1,6 +1,6 @@
 # churchpraise
 
-교회 예배·찬양팀을 위한 새찬송가 & CCM 악보 뷰어 앱 (Flutter, Android / iOS).
+**성경&찬양** — 교회 예배·찬양팀을 위한 성경 · 새찬송가 & CCM 악보 뷰어 앱 (Flutter, Android / iOS).
 
 자세한 소개는 [PORTFOLIO.md](PORTFOLIO.md)를 참고하세요.
 
