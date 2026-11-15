@@ -16,6 +16,7 @@ class _BibleTabState extends State<BibleTab> {
   int _chapter = 1; // 기본값: 1장
   int? _highlightedVerse;
   double _fontSize = 18.0;
+  bool _switchingVersion = false;
   final ScrollController _scrollCtrl = ScrollController();
 
   static const _prefBookKey = 'bible_last_book_idx';
@@ -97,6 +98,69 @@ class _BibleTabState extends State<BibleTab> {
     }
   }
 
+  Future<void> _openVersionPicker() async {
+    final service = BibleService.instance;
+    final current = service.version.value;
+    final picked = await showModalBottomSheet<BibleVersion>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(
+                '성경 역본',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final v in BibleVersion.values)
+              ListTile(
+                title: Text(v.label),
+                subtitle: Text(_versionDescription(v)),
+                trailing: v == current
+                    ? Icon(Icons.check,
+                        color: Theme.of(ctx).colorScheme.primary)
+                    : null,
+                onTap: () => Navigator.pop(ctx, v),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || picked == current) return;
+
+    setState(() => _switchingVersion = true);
+    try {
+      await service.setVersion(picked);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${picked.label} 성경 데이터를 불러올 수 없습니다'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _switchingVersion = false);
+    }
+  }
+
+  static String _versionDescription(BibleVersion v) {
+    switch (v) {
+      case BibleVersion.krvRevised:
+        return '기본 역본';
+      case BibleVersion.krv:
+        return '1961년판';
+      case BibleVersion.kjv:
+        return 'King James Version (영어)';
+    }
+  }
+
   Future<void> _openBookChapterPicker() async {
     final books = BibleService.instance.books;
     if (books.isEmpty) return;
@@ -119,17 +183,19 @@ class _BibleTabState extends State<BibleTab> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return ValueListenableBuilder<bool>(
-      valueListenable: BibleService.instance.loaded,
-      builder: (context, isLoaded, _) {
-        if (!isLoaded) {
-          return const Center(
+    final service = BibleService.instance;
+    return ListenableBuilder(
+      listenable: Listenable.merge([service.loaded, service.version]),
+      builder: (context, _) {
+        final versionLabel = service.version.value.label;
+        if (!service.loaded.value) {
+          return Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 12),
-                Text('개역개정 성경 데이터를 불러오는 중...'),
+                const CircularProgressIndicator(),
+                const SizedBox(height: 12),
+                Text('$versionLabel 성경 데이터를 불러오는 중...'),
               ],
             ),
           );
@@ -233,6 +299,35 @@ class _BibleTabState extends State<BibleTab> {
                     onPressed: hasNext ? _nextChapter : null,
                     visualDensity: VisualDensity.compact,
                   ),
+                  // 역본 선택
+                  InkWell(
+                    onTap: _switchingVersion ? null : _openVersionPicker,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: cs.outline.withValues(alpha: 0.5)),
+                      ),
+                      child: _switchingVersion
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              versionLabel,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: cs.primary,
+                              ),
+                            ),
+                    ),
+                  ),
                   const SizedBox(width: 2),
                   // 글자 크기 조절
                   IconButton(
@@ -335,7 +430,7 @@ class _BibleTabState extends State<BibleTab> {
                         },
                         onLongPress: () {
                           final copyText =
-                              '${curBook.name} $safeChapter:$verseNum ${parsed.body}';
+                              '${curBook.name} $safeChapter:$verseNum ${parsed.body} ($versionLabel)';
                           Clipboard.setData(ClipboardData(text: copyText));
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(

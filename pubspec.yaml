@@ -1,8 +1,8 @@
 name: churchpraise
-description: "교회찬양집 - 성경, 새찬송가, 예배문 & 악보 뷰어"
+description: "성경&찬양 - 성경, 새찬송가, 예배문 & 악보 뷰어"
 publish_to: 'none'
 
-version: 1.2.0+11
+version: 1.3.0+12
 
 environment:
   sdk: ^3.11.5
@@ -31,7 +31,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/app_icon.png"
-  adaptive_icon_background: "#252560"
+  adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/app_icon_fg.png"
   remove_alpha_ios: true
   web:
@@ -45,5 +45,7 @@ flutter:
   assets:
     - assets/hymns_pdf/
     - assets/bible/ko_rev.json
+    - assets/bible/ko_krv.json
+    - assets/bible/en_kjv.json
     - assets/app_icon.png
     - assets/app_icon_fg.png

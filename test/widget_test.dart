@@ -3,6 +3,7 @@
 // 외부 의존성이 없는 정적 데이터 로직을 검증한다.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:churchpraise/data/hymn_data.dart';
 import 'package:churchpraise/data/responsive_reading_data.dart';
@@ -10,6 +11,8 @@ import 'package:churchpraise/services/bible_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  // BibleService는 마지막으로 선택한 역본을 SharedPreferences에서 읽음
+  SharedPreferences.setMockInitialValues({});
 
   group('BibleService', () {
     test('개역개정 66권 전체(구약 39권, 신약 27권)가 정상 로드된다', () async {

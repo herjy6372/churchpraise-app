@@ -37,7 +37,7 @@ class ChurchPraiseApp extends StatelessWidget {
       valueListenable: AppSettings.instance.themeMode,
       builder: (context, themeMode, _) {
         return MaterialApp(
-          title: '교회찬양집',
+          title: '성경&찬양',
           debugShowCheckedModeBanner: false,
           themeMode: themeMode,
           theme: _buildLightTheme(),

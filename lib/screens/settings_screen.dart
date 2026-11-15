@@ -393,7 +393,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ListTile(
                               leading: const Icon(Icons.music_note_outlined),
                               title: const Text('앱 이름'),
-                              trailing: Text('교회찬양집',
+                              trailing: Text('성경&찬양',
                                   style: TextStyle(color: cs.onSurface.withValues(alpha: 0.6))),
                             ),
                             Divider(height: 1, indent: 16, endIndent: 16, color: cs.outlineVariant),

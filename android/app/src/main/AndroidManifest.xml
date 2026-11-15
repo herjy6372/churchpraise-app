@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="교회찬양집"
+        android:label="성경&amp;찬양"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

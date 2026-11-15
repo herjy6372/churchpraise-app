@@ -9,6 +9,7 @@ import '../models/conti.dart';
 import '../data/hymn_data.dart';
 import '../data/responsive_reading_data.dart';
 import '../services/app_settings.dart';
+import '../services/bible_service.dart';
 import '../services/conti_service.dart';
 import '../services/favorites_service.dart';
 import '../services/score_service.dart';
@@ -45,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
     TagService.instance.tags.addListener(_refresh);
     ContiService.instance.contis.addListener(_refresh);
     ScoreService.instance.scores.addListener(_refresh);
+    BibleService.instance.version.addListener(_refresh);
   }
 
   void _refresh() => setState(() {});
@@ -54,6 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchController.dispose();
     FavoritesService.instance.favorites.removeListener(_refresh);
     TagService.instance.tags.removeListener(_refresh);
+    BibleService.instance.version.removeListener(_refresh);
     ContiService.instance.contis.removeListener(_refresh);
     ScoreService.instance.scores.removeListener(_refresh);
     super.dispose();
@@ -390,7 +393,11 @@ class _HomeScreenState extends State<HomeScreen> {
   String get _searchHint {
     switch (_currentIndex) {
       case 0:
-        return '성경 말씀 또는 장절 검색 (예: 요 3:16, 사랑)...';
+        final version = BibleService.instance.version.value;
+        if (version == BibleVersion.kjv) {
+          return 'KJV 말씀 또는 장절 검색 (예: John 3:16, love)...';
+        }
+        return '${version.label} 말씀 또는 장절 검색 (예: 요 3:16, 사랑)...';
       case 1:
         return '찬송가 제목 또는 장수로 검색...';
       case 2:
@@ -415,7 +422,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('찬양집',
+        title: const Text('성경&찬양',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 22)),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
@@ -532,7 +539,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: IndexedStack(
               index: _currentIndex,
               children: [
-                // 0: 성경 (개역개정 66권)
+                // 0: 성경 (개역개정 기본, 개역한글·KJV 선택)
                 BibleTab(searchQuery: _searchQuery),
                 // 1: 새찬송가
                 _SongTabView(
