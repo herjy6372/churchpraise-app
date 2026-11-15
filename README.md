@@ -25,6 +25,33 @@ Play Console 스토어 등록정보에 올린 이미지는 [`docs/play-store/`](
 
 스크린샷은 번호 순서(성경 → 역본 선택 → 새찬송가 → 예배문)대로 올립니다. 이미지를 바꿀 때는 이 폴더의 파일도 함께 교체하세요.
 
+## 구조
+
+```
+lib/
+├── main.dart                 앱 시작, Firebase 초기화
+├── data/                     새찬송가 645곡·교독문·태그 정적 데이터
+├── models/                   찬송가·악보·콘티 모델
+├── screens/                  화면 (성경, 새찬송가·악보, 예배문, 콘티, 악보 뷰어, 설정)
+├── services/                 성경 로드·검색, 즐겨찾기, 콘티, 태그, 백업·복원
+└── widgets/                  필터·태그 편집 시트
+assets/
+├── app_icon.png, app_icon_fg.png   앱 아이콘 원본 (flutter_launcher_icons)
+├── bible/                    성경 역본 JSON (저장소에 없음)
+└── hymns_pdf/                새찬송가 악보 PDF (저장소에 없음)
+android/, ios/                플랫폼 설정 (Firebase 설정 포함, 서명 키 제외)
+docs/
+├── screenshots/              README·PORTFOLIO.md용 앱 스크린샷
+└── play-store/               Google Play 스토어 이미지
+    ├── graphics/             앱 아이콘 512×512, 그래픽 이미지 1024×500
+    ├── phone/                휴대전화 스크린샷 1080×1920
+    └── tablet/               7인치·10인치 태블릿 스크린샷 1920×1080
+tool/convert_bible.py         성경 역본 원본 JSON → 앱 형식 변환
+test/                         성경 역본별 검색 등 단위 테스트
+church_website/               김천침례교회 홈페이지 (정적 HTML)
+PORTFOLIO.md                  프로젝트 상세 소개·작업 과정
+```
+
 ## 저장소에 포함되지 않은 파일
 
 저작권 문제로 다음 콘텐츠는 이 저장소에 포함하지 않습니다.
