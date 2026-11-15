@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'favorites_service.dart';
 import 'conti_service.dart';
 import 'tag_service.dart';
+import 'highlight_service.dart';
+import 'reading_plan_service.dart';
 
 class SyncService {
   static final instance = SyncService._();
@@ -72,10 +74,16 @@ class SyncService {
         }
       }
 
+      // 성경 형광펜, 성경읽기표 진도
+      final highlightRaw = prefs.getString(HighlightService.prefKey) ?? '{}';
+      final readingRaw = prefs.getString(ReadingPlanService.prefKey) ?? '[]';
+
       await _userDoc().set({
         'favorites': favRaw,
         'contis': contiRaw,
         'tags': tagRaw,
+        'bibleHighlights': highlightRaw,
+        'readingPlan2027': readingRaw,
         'annotations': jsonEncode(annoMap),
         'updatedAt': FieldValue.serverTimestamp(),
         'email': _auth.currentUser!.email,
@@ -110,6 +118,18 @@ class SyncService {
       if (data['tags'] != null) {
         await prefs.setString('song_tags_v2', data['tags'] as String);
         await TagService.instance.init();
+      }
+
+      // 성경 형광펜, 성경읽기표 진도
+      if (data['bibleHighlights'] != null) {
+        await prefs.setString(
+            HighlightService.prefKey, data['bibleHighlights'] as String);
+        await HighlightService.instance.init();
+      }
+      if (data['readingPlan2027'] != null) {
+        await prefs.setString(
+            ReadingPlanService.prefKey, data['readingPlan2027'] as String);
+        await ReadingPlanService.instance.init();
       }
 
       // 필기 데이터

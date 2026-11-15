@@ -62,6 +62,25 @@ class BibleBook {
   }
 }
 
+/// 절 번호 목록을 범위 표기로 바꿉니다. 예: [1,2,3,5,7,8] → "1~3, 5, 7~8"
+String formatVerseRanges(Iterable<int> verses) {
+  final sorted = verses.toSet().toList()..sort();
+  if (sorted.isEmpty) return '';
+  final parts = <String>[];
+  var start = sorted.first;
+  var prev = start;
+  for (final v in sorted.skip(1)) {
+    if (v == prev + 1) {
+      prev = v;
+      continue;
+    }
+    parts.add(start == prev ? '$start' : '$start~$prev');
+    start = prev = v;
+  }
+  parts.add(start == prev ? '$start' : '$start~$prev');
+  return parts.join(', ');
+}
+
 class BibleSearchResult {
   final BibleBook book;
   final int chapter; // 1-based
@@ -145,6 +164,9 @@ class BibleService {
     ['1jn', '1jo'], ['2jn', '2jo'], ['3jn', '3jo'], ['jud', 'jd'],
     ['rev', 're', 'rv'],
   ];
+
+  /// 66권 약어 (창, 출, … 계)
+  static List<String> get shortNames => _shortNames;
 
   static const _prefVersionKey = 'bible_version';
 

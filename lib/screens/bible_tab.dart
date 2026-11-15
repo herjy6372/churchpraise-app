@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/bible_service.dart';
+import '../services/highlight_service.dart';
+import '../services/reading_plan_service.dart';
+import 'reading_plan_screen.dart';
+
+/// 구약 파란색, 신약 빨간색 (권 선택 박스·배지 공통)
+const Color kOldTestamentColor = Color(0xFF2F6FD6);
+const Color kNewTestamentColor = Color(0xFFD64545);
 
 class BibleTab extends StatefulWidget {
   final String searchQuery;
@@ -17,7 +25,11 @@ class _BibleTabState extends State<BibleTab> {
   int? _highlightedVerse;
   double _fontSize = 18.0;
   bool _switchingVersion = false;
-  final ScrollController _scrollCtrl = ScrollController();
+  final ItemScrollController _itemScroll = ItemScrollController();
+
+  /// 여러 절 선택 (복사·형광펜용)
+  final Set<int> _selected = {};
+  int? _anchorVerse;
 
   static const _prefBookKey = 'bible_last_book_idx';
   static const _prefChapKey = 'bible_last_chapter';
@@ -27,12 +39,8 @@ class _BibleTabState extends State<BibleTab> {
   void initState() {
     super.initState();
     _initBible();
-  }
-
-  @override
-  void dispose() {
-    _scrollCtrl.dispose();
-    super.dispose();
+    HighlightService.instance.ensureLoaded();
+    ReadingPlanService.instance.ensureLoaded();
   }
 
   Future<void> _initBible() async {
@@ -69,10 +77,98 @@ class _BibleTabState extends State<BibleTab> {
       _bookIdx = bookIndex;
       _chapter = chapter;
       _highlightedVerse = targetVerse;
+      _selected.clear();
+      _anchorVerse = null;
     });
     _savePosition();
-    if (_scrollCtrl.hasClients) {
-      _scrollCtrl.jumpTo(0);
+    // 새 장을 그린 뒤 선택한 절(없으면 1절)로 이동
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_itemScroll.isAttached) return;
+      final index = (targetVerse ?? 1) - 1;
+      _itemScroll.jumpTo(index: index < 0 ? 0 : index);
+    });
+  }
+
+  // ── 여러 절 선택 ─────────────────────────────
+  void _toggleVerse(int verse) {
+    setState(() {
+      if (_selected.contains(verse)) {
+        _selected.remove(verse);
+        if (_anchorVerse == verse) _anchorVerse = null;
+      } else {
+        _selected.add(verse);
+        _anchorVerse = verse;
+      }
+      _highlightedVerse = null;
+    });
+  }
+
+  /// 길게 누르면 마지막으로 누른 절부터 이 절까지 한 번에 선택
+  void _selectRangeTo(int verse) {
+    setState(() {
+      final from = _anchorVerse;
+      if (from == null) {
+        _selected.add(verse);
+      } else {
+        final a = from < verse ? from : verse;
+        final b = from < verse ? verse : from;
+        for (var v = a; v <= b; v++) {
+          _selected.add(v);
+        }
+      }
+      _anchorVerse = verse;
+      _highlightedVerse = null;
+    });
+    HapticFeedback.selectionClick();
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selected.clear();
+      _anchorVerse = null;
+    });
+  }
+
+  void _copySelected(BibleBook book, int chapter, String versionLabel) {
+    if (_selected.isEmpty) return;
+    final sorted = _selected.toList()..sort();
+    final verses = book.getChapterVerses(chapter);
+    final lines = <String>[
+      '${book.name} $chapter:${formatVerseRanges(sorted)} ($versionLabel)',
+      for (final v in sorted)
+        if (v >= 1 && v <= verses.length)
+          '$v ${BibleBook.parseVerseText(verses[v - 1]).body}',
+    ];
+    Clipboard.setData(ClipboardData(text: lines.join('\n')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            '${book.name} $chapter장 ${formatVerseRanges(sorted)}절을 복사했습니다'),
+        duration: const Duration(seconds: 1),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    _clearSelection();
+  }
+
+  Future<void> _highlightSelected(int chapter, int? colorIdx) async {
+    if (_selected.isEmpty) return;
+    final verses = _selected.toList();
+    if (colorIdx == null) {
+      await HighlightService.instance.clear(_bookIdx, chapter, verses);
+    } else {
+      await HighlightService.instance
+          .setColor(_bookIdx, chapter, verses, colorIdx);
+    }
+    _clearSelection();
+  }
+
+  Future<void> _openReadingPlan() async {
+    final picked = await Navigator.of(context).push<ChapterRef>(
+      MaterialPageRoute(builder: (_) => const ReadingPlanScreen()),
+    );
+    if (picked != null) {
+      _selectBookAndChapter(picked.bookIdx, picked.chapter);
     }
   }
 
@@ -165,7 +261,7 @@ class _BibleTabState extends State<BibleTab> {
     final books = BibleService.instance.books;
     if (books.isEmpty) return;
 
-    final picked = await showModalBottomSheet<(int, int)>(
+    final picked = await showModalBottomSheet<(int, int, int?)>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -175,7 +271,7 @@ class _BibleTabState extends State<BibleTab> {
       ),
     );
     if (picked != null) {
-      _selectBookAndChapter(picked.$1, picked.$2);
+      _selectBookAndChapter(picked.$1, picked.$2, targetVerse: picked.$3);
     }
   }
 
@@ -185,7 +281,12 @@ class _BibleTabState extends State<BibleTab> {
 
     final service = BibleService.instance;
     return ListenableBuilder(
-      listenable: Listenable.merge([service.loaded, service.version]),
+      listenable: Listenable.merge([
+        service.loaded,
+        service.version,
+        HighlightService.instance.highlights,
+        ReadingPlanService.instance.done,
+      ]),
       builder: (context, _) {
         final versionLabel = service.version.value.label;
         if (!service.loaded.value) {
@@ -221,6 +322,7 @@ class _BibleTabState extends State<BibleTab> {
 
         return Column(
           children: [
+            _buildReadingPlanBanner(cs),
             // 상단 성경 권/장 선택 & 이동 컨트롤 바
             Container(
               color: cs.surface,
@@ -257,18 +359,16 @@ class _BibleTabState extends State<BibleTab> {
                                   horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: curBook.isOldTestament
-                                    ? cs.secondaryContainer
-                                    : cs.tertiaryContainer,
+                                    ? kOldTestamentColor
+                                    : kNewTestamentColor,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
                                 curBook.isOldTestament ? '구약' : '신약',
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  color: curBook.isOldTestament
-                                      ? cs.onSecondaryContainer
-                                      : cs.onTertiaryContainer,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),
@@ -349,8 +449,11 @@ class _BibleTabState extends State<BibleTab> {
             const Divider(height: 1),
             // 절 목록
             Expanded(
-              child: ListView.builder(
-                controller: _scrollCtrl,
+              child: ScrollablePositionedList.builder(
+                key: ValueKey('$_bookIdx:$safeChapter'),
+                itemScrollController: _itemScroll,
+                initialScrollIndex:
+                    ((_highlightedVerse ?? 1) - 1).clamp(0, verses.length),
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 36),
                 itemCount: verses.length + 1,
                 itemBuilder: (context, i) {
@@ -395,6 +498,18 @@ class _BibleTabState extends State<BibleTab> {
                   final verseNum = i + 1;
                   final parsed = BibleBook.parseVerseText(verses[i]);
                   final isHighlighted = _highlightedVerse == verseNum;
+                  final isSelected = _selected.contains(verseNum);
+                  final markColor = HighlightService.instance
+                      .colorOf(_bookIdx, safeChapter, verseNum);
+                  final isDark =
+                      Theme.of(context).brightness == Brightness.dark;
+                  Color bg = Colors.transparent;
+                  if (markColor != null) {
+                    bg = HighlightService.colors[markColor]
+                        .withValues(alpha: isDark ? 0.35 : 0.55);
+                  } else if (isHighlighted) {
+                    bg = cs.primaryContainer.withValues(alpha: 0.45);
+                  }
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,34 +537,22 @@ class _BibleTabState extends State<BibleTab> {
                         ),
                       InkWell(
                         borderRadius: BorderRadius.circular(10),
-                        onTap: () {
-                          setState(() {
-                            _highlightedVerse =
-                                isHighlighted ? null : verseNum;
-                          });
-                        },
-                        onLongPress: () {
-                          final copyText =
-                              '${curBook.name} $safeChapter:$verseNum ${parsed.body} ($versionLabel)';
-                          Clipboard.setData(ClipboardData(text: copyText));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  '${curBook.name} $safeChapter장 $verseNum절 말씀이 복사되었습니다'),
-                              duration: const Duration(seconds: 1),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
+                        onTap: () => _toggleVerse(verseNum),
+                        onLongPress: () => _selectRangeTo(verseNum),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
+                          margin: const EdgeInsets.symmetric(vertical: 1),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 8),
                           decoration: BoxDecoration(
-                            color: isHighlighted
-                                ? cs.primaryContainer.withValues(alpha: 0.45)
-                                : Colors.transparent,
+                            color: bg,
                             borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isSelected
+                                  ? cs.primary
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -476,7 +579,7 @@ class _BibleTabState extends State<BibleTab> {
                                     fontSize: _fontSize,
                                     height: 1.6,
                                     color: cs.onSurface,
-                                    fontWeight: isHighlighted
+                                    fontWeight: isHighlighted || isSelected
                                         ? FontWeight.w600
                                         : FontWeight.normal,
                                   ),
@@ -491,9 +594,147 @@ class _BibleTabState extends State<BibleTab> {
                 },
               ),
             ),
+            if (_selected.isNotEmpty)
+              _buildSelectionBar(cs, curBook, safeChapter, versionLabel),
           ],
         );
       },
+    );
+  }
+
+  /// 여러 절을 골랐을 때 아래에 나타나는 복사·형광펜 막대
+  Widget _buildSelectionBar(
+      ColorScheme cs, BibleBook book, int chapter, String versionLabel) {
+    final sorted = _selected.toList()..sort();
+    return Material(
+      elevation: 8,
+      color: cs.surfaceContainerHigh,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '${book.shortName} $chapter:${formatVerseRanges(sorted)} 선택',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '절을 길게 누르면 범위로 선택돼요',
+                          style: TextStyle(
+                              fontSize: 11, color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () =>
+                        _copySelected(book, chapter, versionLabel),
+                    icon: const Icon(Icons.copy, size: 18),
+                    label: const Text('복사'),
+                  ),
+                  IconButton(
+                    tooltip: '선택 취소',
+                    icon: const Icon(Icons.close),
+                    onPressed: _clearSelection,
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.border_color, size: 18),
+                  const SizedBox(width: 8),
+                  for (var c = 0; c < HighlightService.colors.length; c++)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: InkResponse(
+                        onTap: () => _highlightSelected(chapter, c),
+                        radius: 22,
+                        child: Tooltip(
+                          message: '${HighlightService.colorNames[c]} 형광펜',
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: HighlightService.colors[c],
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                  color: cs.outline.withValues(alpha: 0.4)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  TextButton.icon(
+                    onPressed: () => _highlightSelected(chapter, null),
+                    icon: const Icon(Icons.format_color_reset, size: 18),
+                    label: const Text('지우기'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 성경 탭 맨 위의 2027 성경읽기표 안내 줄
+  Widget _buildReadingPlanBanner(ColorScheme cs) {
+    final plan = ReadingPlanService.instance;
+    final today = plan.todayIndex();
+    final doneCount = plan.done.value.length;
+    String text;
+    bool todayDone = false;
+    if (today == null) {
+      text = '2027 성경읽기표 · 1월 1일 시작 (하루 3~4장)';
+    } else {
+      final day = plan.days[today];
+      todayDone = plan.done.value.contains(today);
+      text =
+          '오늘 읽기 ${ReadingPlanService.rangeLabel(day, BibleService.shortNames)} · $doneCount/${ReadingPlanService.totalDays}';
+    }
+    return Material(
+      color: cs.secondaryContainer.withValues(alpha: 0.6),
+      child: InkWell(
+        onTap: _openReadingPlan,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          child: Row(
+            children: [
+              Icon(Icons.event_note, size: 18, color: cs.onSecondaryContainer),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  text,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: cs.onSecondaryContainer,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (todayDone)
+                Icon(Icons.check_circle, size: 18, color: cs.primary),
+              Icon(Icons.chevron_right,
+                  size: 18, color: cs.onSecondaryContainer),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -648,7 +889,10 @@ class _BiblePickerSheetState extends State<_BiblePickerSheet>
     with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
   late int _selectedBookIdx;
-  bool _pickingChapter = false;
+  int? _selectedChapter;
+
+  /// 0: 권 선택, 1: 장 선택, 2: 절 선택
+  int _step = 0;
 
   @override
   void initState() {
@@ -668,11 +912,47 @@ class _BiblePickerSheetState extends State<_BiblePickerSheet>
     super.dispose();
   }
 
+  void _pickBook(BibleBook b) {
+    setState(() {
+      _selectedBookIdx = b.index;
+      if (b.chapterCount == 1) {
+        // 한 장짜리 책(옵·몬·요이·요삼·유)은 바로 절 선택
+        _selectedChapter = 1;
+        _step = 2;
+      } else {
+        _step = 1;
+      }
+    });
+  }
+
+  void _pickChapter(int chap) {
+    setState(() {
+      _selectedChapter = chap;
+      _step = 2;
+    });
+  }
+
+  void _back() {
+    setState(() {
+      final book = BibleService.instance.books[_selectedBookIdx];
+      _step = (_step == 2 && book.chapterCount > 1) ? 1 : 0;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final books = BibleService.instance.books;
     final selectedBook = books[_selectedBookIdx];
+
+    String title;
+    if (_step == 0) {
+      title = '성경 선택';
+    } else if (_step == 1) {
+      title = '${selectedBook.name} · 장 선택';
+    } else {
+      title = '${selectedBook.name} $_selectedChapter장 · 절 선택';
+    }
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.82,
@@ -696,20 +976,27 @@ class _BiblePickerSheetState extends State<_BiblePickerSheet>
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                if (_pickingChapter)
+                if (_step > 0)
                   IconButton(
                     icon: const Icon(Icons.arrow_back),
-                    onPressed: () => setState(() => _pickingChapter = false),
+                    tooltip: '뒤로',
+                    onPressed: _back,
                   ),
                 Expanded(
                   child: Text(
-                    _pickingChapter
-                        ? '${selectedBook.name} - 장 선택 (${selectedBook.chapterCount}장)'
-                        : '성경 선택',
+                    title,
                     style: const TextStyle(
                         fontSize: 18, fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (_step == 2)
+                  TextButton(
+                    onPressed: () => Navigator.pop(
+                        context, (_selectedBookIdx, _selectedChapter!, null)),
+                    child: const Text('장 처음부터'),
+                  ),
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
@@ -717,7 +1004,7 @@ class _BiblePickerSheetState extends State<_BiblePickerSheet>
               ],
             ),
           ),
-          if (!_pickingChapter) ...[
+          if (_step == 0) ...[
             TabBar(
               controller: _tabCtrl,
               tabs: const [
@@ -734,44 +1021,29 @@ class _BiblePickerSheetState extends State<_BiblePickerSheet>
                 ],
               ),
             ),
+          ] else if (_step == 1) ...[
+            const Divider(height: 1),
+            Expanded(
+              child: _buildNumberGrid(
+                count: selectedBook.chapterCount,
+                suffix: '장',
+                isCurrent: (n) =>
+                    _selectedBookIdx == widget.initialBookIdx &&
+                    n == widget.initialChapter,
+                onTap: _pickChapter,
+              ),
+            ),
           ] else ...[
             const Divider(height: 1),
             Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.all(16),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 1.25,
-                ),
-                itemCount: selectedBook.chapterCount,
-                itemBuilder: (context, i) {
-                  final chap = i + 1;
-                  final isCurrent = _selectedBookIdx == widget.initialBookIdx &&
-                      chap == widget.initialChapter;
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(10),
-                    onTap: () =>
-                        Navigator.pop(context, (_selectedBookIdx, chap)),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: isCurrent
-                            ? cs.primary
-                            : cs.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$chap장',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isCurrent ? cs.onPrimary : cs.onSurface,
-                        ),
-                      ),
-                    ),
-                  );
-                },
+              child: _buildNumberGrid(
+                count: selectedBook
+                    .getChapterVerses(_selectedChapter ?? 1)
+                    .length,
+                suffix: '절',
+                isCurrent: (_) => false,
+                onTap: (v) => Navigator.pop(
+                    context, (_selectedBookIdx, _selectedChapter!, v)),
               ),
             ),
           ],
@@ -780,70 +1052,107 @@ class _BiblePickerSheetState extends State<_BiblePickerSheet>
     );
   }
 
-  Widget _buildBookGrid(List<BibleBook> bookList) {
+  Widget _buildNumberGrid({
+    required int count,
+    required String suffix,
+    required bool Function(int) isCurrent,
+    required void Function(int) onTap,
+  }) {
     final cs = Theme.of(context).colorScheme;
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 5,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 1.25,
+      ),
+      itemCount: count,
+      itemBuilder: (context, i) {
+        final n = i + 1;
+        final current = isCurrent(n);
+        return InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () => onTap(n),
+          child: Container(
+            decoration: BoxDecoration(
+              color: current ? cs.primary : cs.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '$n$suffix',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: current ? cs.onPrimary : cs.onSurface,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 권 선택: 구약은 파란색, 신약은 빨간색 네모 박스에 약어(창, 마, 요 …)를 크게 표시
+  Widget _buildBookGrid(List<BibleBook> bookList) {
     return GridView.builder(
       padding: const EdgeInsets.all(14),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+        crossAxisCount: 5,
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
-        childAspectRatio: 2.3,
+        childAspectRatio: 0.9,
       ),
       itemCount: bookList.length,
       itemBuilder: (context, i) {
         final b = bookList[i];
         final isSelected = b.index == _selectedBookIdx;
-        return InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () {
-            if (b.chapterCount == 1) {
-              Navigator.pop(context, (b.index, 1));
-            } else {
-              setState(() {
-                _selectedBookIdx = b.index;
-                _pickingChapter = true;
-              });
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? cs.primaryContainer
-                  : cs.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isSelected ? cs.primary : Colors.transparent,
-                width: 1.5,
+        final color =
+            b.isOldTestament ? kOldTestamentColor : kNewTestamentColor;
+        return Semantics(
+          button: true,
+          label: '${b.name} ${b.chapterCount}장',
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => _pickBook(b),
+            child: Container(
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isSelected ? Colors.amber : Colors.transparent,
+                  width: 3,
+                ),
               ),
-            ),
-            alignment: Alignment.centerLeft,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    b.name,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.w500,
-                      color: isSelected
-                          ? cs.onPrimaryContainer
-                          : cs.onSurface,
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      b.shortName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  '${b.chapterCount}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                  const SizedBox(height: 2),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      b.name,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
