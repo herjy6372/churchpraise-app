@@ -8,11 +8,15 @@
 
 ## 스크린샷
 
-| 성경 · 형광펜 | 성경 선택 (구약) | 성경 선택 (신약) | 여러 절 선택 |
+| 성경 비교 보기 · 형광펜 | 성경 선택 (구약) | 성경 선택 (신약) | 여러 절 선택 |
 |:---:|:---:|:---:|:---:|
-| <img src="docs/screenshots/bible-highlight-20261115.jpg" width="190" alt="성경 탭과 형광펜"> | <img src="docs/screenshots/books-ot-20261115.jpg" width="190" alt="구약 권 선택 (파란색)"> | <img src="docs/screenshots/books-nt-20261115.jpg" width="190" alt="신약 권 선택 (빨간색)"> | <img src="docs/screenshots/select-20261115.jpg" width="190" alt="여러 절 선택과 복사·형광펜"> |
+| <img src="docs/screenshots/compare-20261122.jpg" width="190" alt="성경 비교 보기 (개역개정 + KJV)와 형광펜"> | <img src="docs/screenshots/books-ot-20261115.jpg" width="190" alt="구약 권 선택 (파란색)"> | <img src="docs/screenshots/books-nt-20261115.jpg" width="190" alt="신약 권 선택 (빨간색)"> | <img src="docs/screenshots/select-20261115.jpg" width="190" alt="여러 절 선택과 복사·형광펜"> |
 | **2027 성경읽기표** | **새찬송가** | **예배문** | |
 | <img src="docs/screenshots/reading-plan-20261115.jpg" width="190" alt="2027 성경읽기표"> | <img src="docs/screenshots/hymns-20261115.jpg" width="190" alt="새찬송가 탭"> | <img src="docs/screenshots/liturgy-20261115.jpg" width="190" alt="예배문 탭"> | |
+
+**태블릿 가로 · 비교 보기** (왼쪽 개역개정, 오른쪽 개역한글)
+
+<img src="docs/screenshots/compare-tablet-20261122.jpg" width="780" alt="태블릿 가로 화면에서 개역개정과 개역한글을 좌우로 비교">
 
 ## Google Play 스토어 이미지
 
