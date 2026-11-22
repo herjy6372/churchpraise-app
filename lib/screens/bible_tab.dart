@@ -197,46 +197,95 @@ class _BibleTabState extends State<BibleTab> {
   Future<void> _openVersionPicker() async {
     final service = BibleService.instance;
     final current = service.version.value;
-    final picked = await showModalBottomSheet<BibleVersion>(
+    final compare = service.compareVersion.value;
+    // ('main', 역본) = 기본 역본 변경, ('compare', 역본 또는 null) = 비교 역본 변경
+    final picked = await showModalBottomSheet<(String, BibleVersion?)>(
       context: context,
       showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
-              child: Text(
-                '성경 역본',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+      isScrollControlled: true,
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        Widget check(bool on) =>
+            on ? Icon(Icons.check, color: cs.primary) : const SizedBox.shrink();
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.85),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 0, 20, 8),
+                    child: Text(
+                      '성경 역본',
+                      style:
+                          TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  for (final v in BibleVersion.values)
+                    ListTile(
+                      title: Text(v.label),
+                      subtitle: Text(_versionDescription(v)),
+                      trailing: check(v == current),
+                      onTap: () => Navigator.pop(ctx, ('main', v)),
+                    ),
+                  const Divider(height: 24),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 0, 20, 2),
+                    child: Text(
+                      '비교해서 보기',
+                      style:
+                          TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 6),
+                    child: Text(
+                      '휴대폰에서는 기본 역본 아래에 흐린 글자로, 태블릿 가로 화면에서는 오른쪽에 나란히 보여 줍니다.',
+                      style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+                    ),
+                  ),
+                  ListTile(
+                    title: const Text('비교 안 함'),
+                    subtitle: Text('${current.label}만 보기'),
+                    trailing: check(compare == null),
+                    onTap: () => Navigator.pop(ctx, ('compare', null)),
+                  ),
+                  for (final v in BibleVersion.values)
+                    if (v != current)
+                      ListTile(
+                        title: Text('${current.label} + ${v.label}'),
+                        subtitle: Text(_versionDescription(v)),
+                        trailing: check(compare == v),
+                        onTap: () => Navigator.pop(ctx, ('compare', v)),
+                      ),
+                  const SizedBox(height: 8),
+                ],
               ),
             ),
-            for (final v in BibleVersion.values)
-              ListTile(
-                title: Text(v.label),
-                subtitle: Text(_versionDescription(v)),
-                trailing: v == current
-                    ? Icon(Icons.check,
-                        color: Theme.of(ctx).colorScheme.primary)
-                    : null,
-                onTap: () => Navigator.pop(ctx, v),
-              ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
-    if (picked == null || picked == current) return;
+    if (picked == null) return;
+    final (kind, target) = picked;
+    if (kind == 'main' && (target == null || target == current)) return;
+    if (kind == 'compare' && target == compare) return;
 
     setState(() => _switchingVersion = true);
     try {
-      await service.setVersion(picked);
+      if (kind == 'main') {
+        await service.setVersion(target!);
+      } else {
+        await service.setCompareVersion(target);
+      }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${picked.label} 성경 데이터를 불러올 수 없습니다'),
+            content: Text('${target?.label ?? ''} 성경 데이터를 불러올 수 없습니다'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -284,6 +333,7 @@ class _BibleTabState extends State<BibleTab> {
       listenable: Listenable.merge([
         service.loaded,
         service.version,
+        service.compareVersion,
         HighlightService.instance.highlights,
         ReadingPlanService.instance.done,
       ]),
@@ -315,6 +365,19 @@ class _BibleTabState extends State<BibleTab> {
         final curBook = books[_bookIdx.clamp(0, books.length - 1)];
         final safeChapter = _chapter.clamp(1, curBook.chapterCount);
         final verses = curBook.getChapterVerses(safeChapter);
+
+        // 비교 보기: 휴대폰은 기본 역본 아래에 흐리게, 태블릿 가로 화면은 좌우로 나란히
+        final compareV = service.compareVersion.value;
+        final compareVerses =
+            service.compareChapterVerses(curBook.index, safeChapter);
+        final comparing = compareV != null && compareVerses.isNotEmpty;
+        final mq = MediaQuery.of(context);
+        final sideBySide = comparing &&
+            mq.orientation == Orientation.landscape &&
+            mq.size.shortestSide >= 600;
+        final chipLabel = compareV == null
+            ? versionLabel
+            : '${service.version.value.shortLabel}·${compareV.shortLabel}';
 
         final hasPrev = _bookIdx > 0 || safeChapter > 1;
         final hasNext =
@@ -419,7 +482,7 @@ class _BibleTabState extends State<BibleTab> {
                                   CircularProgressIndicator(strokeWidth: 2),
                             )
                           : Text(
-                              versionLabel,
+                              chipLabel,
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -447,6 +510,31 @@ class _BibleTabState extends State<BibleTab> {
               ),
             ),
             const Divider(height: 1),
+            if (sideBySide)
+              Container(
+                color: cs.surfaceContainerLow,
+                padding: const EdgeInsets.fromLTRB(58, 8, 24, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        service.version.value.label,
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, color: cs.primary),
+                      ),
+                    ),
+                    const SizedBox(width: 25),
+                    Expanded(
+                      child: Text(
+                        compareV.label,
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: cs.onSurfaceVariant),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // 절 목록
             Expanded(
               child: ScrollablePositionedList.builder(
@@ -573,16 +661,28 @@ class _BibleTabState extends State<BibleTab> {
                                 ),
                               ),
                               Expanded(
-                                child: Text(
-                                  parsed.body,
-                                  style: TextStyle(
-                                    fontSize: _fontSize,
-                                    height: 1.6,
-                                    color: cs.onSurface,
-                                    fontWeight: isHighlighted || isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
-                                  ),
+                                child: _buildVerseTexts(
+                                  cs: cs,
+                                  mainText: parsed.body,
+                                  emphasize: comparing ||
+                                      isHighlighted ||
+                                      isSelected,
+                                  compareLabel: compareV?.shortLabel,
+                                  compareTexts: !comparing
+                                      ? const []
+                                      : [
+                                          if (verseNum <= compareVerses.length)
+                                            BibleBook.parseVerseText(
+                                                    compareVerses[verseNum - 1])
+                                                .body,
+                                          // 비교 역본이 절이 더 많은 장은 마지막 절 아래에 이어서 표시
+                                          if (verseNum == verses.length)
+                                            for (var k = verses.length;
+                                                k < compareVerses.length;
+                                                k++)
+                                              '${k + 1} ${BibleBook.parseVerseText(compareVerses[k]).body}',
+                                        ],
+                                  sideBySide: sideBySide,
                                 ),
                               ),
                             ],
@@ -599,6 +699,72 @@ class _BibleTabState extends State<BibleTab> {
           ],
         );
       },
+    );
+  }
+
+  /// 한 절의 본문. 비교 중이면 휴대폰은 아래에 흐리게, 태블릿 가로는 오른쪽에 나란히 표시
+  Widget _buildVerseTexts({
+    required ColorScheme cs,
+    required String mainText,
+    required bool emphasize,
+    required String? compareLabel,
+    required List<String> compareTexts,
+    required bool sideBySide,
+  }) {
+    final mainStyle = TextStyle(
+      fontSize: _fontSize,
+      height: 1.6,
+      color: cs.onSurface,
+      fontWeight: emphasize ? FontWeight.w600 : FontWeight.normal,
+    );
+    final main = Text(mainText, style: mainStyle);
+    if (compareTexts.isEmpty) return main;
+
+    final subStyle = TextStyle(
+      fontSize: (_fontSize - 2).clamp(12.0, 30.0),
+      height: 1.55,
+      color: cs.onSurfaceVariant.withValues(alpha: 0.85),
+      fontWeight: FontWeight.normal,
+    );
+    final subText = compareTexts.join('\n');
+
+    if (sideBySide) {
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: main),
+            Container(
+              width: 1,
+              margin: const EdgeInsets.symmetric(horizontal: 12),
+              color: cs.outlineVariant,
+            ),
+            Expanded(child: Text(subText, style: subStyle)),
+          ],
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        main,
+        const SizedBox(height: 4),
+        Text.rich(
+          TextSpan(children: [
+            if (compareLabel != null)
+              TextSpan(
+                text: '$compareLabel  ',
+                style: subStyle.copyWith(
+                  fontSize: (_fontSize - 6).clamp(10.0, 24.0),
+                  fontWeight: FontWeight.bold,
+                  color: cs.primary.withValues(alpha: 0.7),
+                ),
+              ),
+            TextSpan(text: subText),
+          ]),
+          style: subStyle,
+        ),
+      ],
     );
   }
 

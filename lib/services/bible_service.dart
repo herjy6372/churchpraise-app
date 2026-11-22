@@ -14,6 +14,13 @@ enum BibleVersion {
   final String assetPath;
   const BibleVersion(this.id, this.label, this.assetPath);
 
+  /// 버튼처럼 좁은 곳에 쓰는 짧은 이름
+  String get shortLabel => switch (this) {
+        BibleVersion.krvRevised => '개정',
+        BibleVersion.krv => '한글',
+        BibleVersion.kjv => 'KJV',
+      };
+
   static BibleVersion fromId(String? id) => BibleVersion.values.firstWhere(
         (v) => v.id == id,
         orElse: () => BibleVersion.krvRevised,
@@ -169,11 +176,17 @@ class BibleService {
   static List<String> get shortNames => _shortNames;
 
   static const _prefVersionKey = 'bible_version';
+  static const _prefCompareKey = 'bible_compare_version';
 
   final loaded = ValueNotifier<bool>(false);
   final version = ValueNotifier<BibleVersion>(BibleVersion.krvRevised);
   List<BibleBook> _books = [];
   Future<void>? _loading;
+
+  /// 비교해서 함께 볼 역본 (null이면 기본 역본만 표시)
+  final compareVersion = ValueNotifier<BibleVersion?>(null);
+  List<BibleBook> _compareBooks = [];
+  List<BibleBook> get compareBooks => _compareBooks;
 
   List<BibleBook> get books => _books;
   List<BibleBook> get oldTestament =>
@@ -194,6 +207,18 @@ class BibleService {
         if (saved == BibleVersion.krvRevised) rethrow;
         await _load(BibleVersion.krvRevised);
       }
+      // 마지막으로 고른 비교 역본도 함께 불러옴 (실패하면 비교 없이 표시)
+      final compareId = prefs.getString(_prefCompareKey);
+      if (compareId != null) {
+        final c = BibleVersion.fromId(compareId);
+        if (c != version.value) {
+          try {
+            await _loadCompare(c);
+          } catch (_) {
+            await prefs.remove(_prefCompareKey);
+          }
+        }
+      }
     }()
         .whenComplete(() => _loading = null);
   }
@@ -204,6 +229,39 @@ class BibleService {
     await _load(next);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefVersionKey, next.id);
+    // 기본 역본과 같은 역본은 비교할 수 없으므로 비교 해제
+    if (compareVersion.value == next) await setCompareVersion(null);
+  }
+
+  /// 비교 역본을 바꿉니다. null이면 비교를 끄고 기본 역본만 봅니다.
+  Future<void> setCompareVersion(BibleVersion? next) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (next == null || next == version.value) {
+      _compareBooks = [];
+      compareVersion.value = null;
+      await prefs.remove(_prefCompareKey);
+      return;
+    }
+    if (next != compareVersion.value || _compareBooks.isEmpty) {
+      await _loadCompare(next);
+    }
+    await prefs.setString(_prefCompareKey, next.id);
+  }
+
+  Future<void> _loadCompare(BibleVersion v) async {
+    final raw = await rootBundle.loadString(v.assetPath);
+    _compareBooks = await compute(_parseBibleJson, raw);
+    compareVersion.value = v;
+  }
+
+  /// 비교 역본의 같은 권·장 본문 (비교하지 않거나 데이터가 없으면 빈 목록)
+  List<String> compareChapterVerses(int bookIdx, int chapter) {
+    if (compareVersion.value == null ||
+        bookIdx < 0 ||
+        bookIdx >= _compareBooks.length) {
+      return const [];
+    }
+    return _compareBooks[bookIdx].getChapterVerses(chapter);
   }
 
   Future<void> _load(BibleVersion v) async {

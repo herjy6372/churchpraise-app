@@ -42,13 +42,14 @@ void main() {
 
     test('분량 표기', () {
       final names = BibleService.shortNames;
-      expect(ReadingPlanService.rangeLabel(plan.days.first, names), '창 1~3');
-      // 책이 바뀌는 날은 "창 50 ~ 출 2"처럼 표시
+      expect(ReadingPlanService.rangeLabel(plan.days.first, names), '창 1장~3장');
+      // 책이 바뀌는 날은 "창 50장 ~ 출 2장"처럼 표시
       final crossing = plan.days.firstWhere(
           (d) => d.chapters.first.bookIdx != d.chapters.last.bookIdx);
-      expect(ReadingPlanService.rangeLabel(crossing, names), contains(' ~ '));
+      expect(ReadingPlanService.rangeLabel(crossing, names),
+          matches(RegExp(r'^\S+ \d+장 ~ \S+ \d+장$')));
       expect(ReadingPlanService.rangeLabel(plan.days.last, names),
-          startsWith('계 '));
+          matches(RegExp(r'^계 \d+장~22장$')));
     });
 
     test('읽음 체크가 저장되고 다시 불러와짐', () async {

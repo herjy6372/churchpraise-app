@@ -81,18 +81,18 @@ class ReadingPlanService {
 
   bool get isBeforeStart => todayIndex() == null;
 
-  /// 예: "창 1~4", "창 50 ~ 출 3", "옵 1"
+  /// 예: "창 1장~3장", "창 50장 ~ 출 2장", "옵 1장"
   static String rangeLabel(ReadingDay day, List<String> shortNames) {
     final first = day.chapters.first;
     final last = day.chapters.last;
     final a = shortNames[first.bookIdx];
     if (first.bookIdx == last.bookIdx) {
       return first.chapter == last.chapter
-          ? '$a ${first.chapter}'
-          : '$a ${first.chapter}~${last.chapter}';
+          ? '$a ${first.chapter}장'
+          : '$a ${first.chapter}장~${last.chapter}장';
     }
     final b = shortNames[last.bookIdx];
-    return '$a ${first.chapter} ~ $b ${last.chapter}';
+    return '$a ${first.chapter}장 ~ $b ${last.chapter}장';
   }
 
   Future<void> init() async {

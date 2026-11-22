@@ -69,6 +69,27 @@ void main() {
       expect(service.search('사랑'), isEmpty);
     });
 
+    test('비교 역본: 같은 권·장을 함께 불러오고, 기본 역본과 같아지면 해제', () async {
+      await service.setVersion(BibleVersion.krvRevised);
+      await service.setCompareVersion(BibleVersion.kjv);
+      expect(service.compareVersion.value, BibleVersion.kjv);
+      // 요한복음(42) 3장 16절
+      expect(service.compareChapterVerses(42, 3)[15],
+          startsWith('For God so loved the world'));
+      expect(service.books[42].getChapterVerses(3)[15], contains('하나님이 세상을'));
+
+      // 기본 역본을 KJV로 바꾸면 비교가 꺼짐
+      await service.setVersion(BibleVersion.kjv);
+      expect(service.compareVersion.value, isNull);
+      expect(service.compareChapterVerses(42, 3), isEmpty);
+
+      // 비교 끄기
+      await service.setVersion(BibleVersion.krvRevised);
+      await service.setCompareVersion(BibleVersion.krv);
+      await service.setCompareVersion(null);
+      expect(service.compareVersion.value, isNull);
+    });
+
     test('역본을 바꾸면 같은 검색어 결과도 바뀜', () async {
       await service.setVersion(BibleVersion.kjv);
       final kjv = service.search('창 1:1').single.text;
