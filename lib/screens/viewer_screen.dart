@@ -312,13 +312,13 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
   void _onPointerMove(PointerMoveEvent e) {
     if (_current == null) return;
+    // 진행 중인 획에 점을 직접 추가한다. 획을 매번 새로 만들면
+    // (1) 이동마다 점 목록 전체를 복사하고(O(n²)), (2) 생성자에 넘기지 않은
+    // 필드(예: highlight)가 기본값으로 바뀌어 버린다.
+    // 이 목록은 _onPointerDown에서 만든 growable 리스트이고 _onPointerUp 전까지
+    // 다른 곳에서 참조하지 않으며, _AnnoPainter.shouldRepaint는 항상 true다.
     setState(() {
-      _current = _Stroke(
-        pts: [..._current!.pts, _Pt(e.localPosition.dx, e.localPosition.dy)],
-        clr: _current!.clr,
-        w: _current!.w,
-        erase: _current!.erase,
-      );
+      _current!.pts.add(_Pt(e.localPosition.dx, e.localPosition.dy));
     });
   }
 
