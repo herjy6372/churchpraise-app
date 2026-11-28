@@ -66,6 +66,43 @@ class ScoreService {
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _load();
+    await relinkMovedFiles();
+  }
+
+  /// 저장된 경로에 파일이 없으면, 현재 내 악보 폴더에서 같은 파일 이름을 찾아 경로를 고친다.
+  /// iOS는 앱을 다시 설치하거나 백업에서 기기를 옮기면 앱 폴더의 전체 경로가 바뀌어
+  /// 예전에 저장한 전체 경로로는 파일을 찾지 못하기 때문이다. 고친 개수를 돌려준다.
+  Future<int> relinkMovedFiles({String? scoresDir}) async {
+    if (scores.value.isEmpty) return 0;
+    final dir = scoresDir ?? await _currentScoresDir();
+    if (dir == null) return 0;
+    var fixed = 0;
+    final list = scores.value.map((s) {
+      if (File(s.filePath).existsSync()) return s;
+      final candidate = '$dir/${s.filePath.split('/').last}';
+      if (candidate == s.filePath || !File(candidate).existsSync()) return s;
+      fixed++;
+      return CustomScore(
+        id: s.id,
+        title: s.title,
+        filePath: candidate,
+        fileName: s.fileName,
+        createdAt: s.createdAt,
+      );
+    }).toList();
+    if (fixed > 0) {
+      scores.value = list;
+      await _save();
+    }
+    return fixed;
+  }
+
+  Future<String?> _currentScoresDir() async {
+    try {
+      return await _channel.invokeMethod<String>('getScoresDir');
+    } catch (_) {
+      return null; // 테스트 환경 등 네이티브 채널이 없을 때
+    }
   }
 
   void _load() {
