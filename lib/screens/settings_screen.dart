@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -190,6 +191,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() {});
         _loadLastBackup();
       }
+    } on GoogleSignInException catch (e) {
+      // 사용자가 로그인 창을 닫은 경우는 안내하지 않음
+      if (e.code == GoogleSignInExceptionCode.canceled || !mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Google 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.')),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
