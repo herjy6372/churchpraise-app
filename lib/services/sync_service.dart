@@ -10,6 +10,16 @@ import 'tag_service.dart';
 import 'highlight_service.dart';
 import 'reading_plan_service.dart';
 
+/// 서버 백업 데이터가 Firestore 문서 한 개의 크기 한도를 넘을 때
+class BackupTooLargeException implements Exception {
+  final int bytes;
+  const BackupTooLargeException(this.bytes);
+  @override
+  String toString() =>
+      '백업 데이터가 너무 커서 서버에 저장할 수 없습니다 (약 ${(bytes / 1024 / 1024).toStringAsFixed(1)}MB). '
+      '설정의 \'파일로 백업\'을 이용해 주세요.';
+}
+
 class SyncService {
   static final instance = SyncService._();
   SyncService._();
@@ -21,6 +31,18 @@ class SyncService {
   final _firestore = FirebaseFirestore.instance;
 
   static const _annoPrefix = 'anno_v1_';
+
+  /// Firestore 문서 한 개의 한도는 1MiB(1,048,576바이트). 필드 이름·메타데이터 몫을 남겨 두고 이보다 크면 미리 막는다.
+  static const maxServerBackupBytes = 1000 * 1000;
+
+  /// 서버에 올릴 문서 크기를 대략 계산 (필드 이름 + 값의 UTF-8 바이트 수)
+  static int estimateBackupBytes(Map<String, String> fields) {
+    var total = 0;
+    for (final e in fields.entries) {
+      total += utf8.encode(e.key).length + utf8.encode(e.value).length + 1;
+    }
+    return total;
+  }
 
   void init() {
     GoogleSignIn.instance.initialize(
@@ -78,16 +100,32 @@ class SyncService {
       final highlightRaw = prefs.getString(HighlightService.prefKey) ?? '{}';
       final readingRaw = prefs.getString(ReadingPlanService.prefKey) ?? '[]';
 
-      await _userDoc().set({
+      final email = _auth.currentUser!.email ?? '';
+      final fields = <String, String>{
         'favorites': favRaw,
         'contis': contiRaw,
         'tags': tagRaw,
         'bibleHighlights': highlightRaw,
         'readingPlan2027': readingRaw,
         'annotations': jsonEncode(annoMap),
-        'updatedAt': FieldValue.serverTimestamp(),
-        'email': _auth.currentUser!.email,
-      });
+        'email': email,
+      };
+      final size = estimateBackupBytes(fields);
+      if (size > maxServerBackupBytes) throw BackupTooLargeException(size);
+
+      try {
+        await _userDoc().set({
+          ...fields,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } on FirebaseException catch (e) {
+        // 계산보다 실제 문서가 커서 서버가 거절한 경우도 같은 안내로
+        if (e.code == 'invalid-argument' &&
+            (e.message ?? '').toLowerCase().contains('exceeds')) {
+          throw BackupTooLargeException(size);
+        }
+        rethrow;
+      }
     } finally {
       syncing.value = false;
     }

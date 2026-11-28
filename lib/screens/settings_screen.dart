@@ -208,6 +208,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SnackBar(content: Text('백업 완료!')),
         );
       }
+    } on BackupTooLargeException catch (e) {
+      if (!mounted) return;
+      final useFile = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('서버에 백업할 수 없어요'),
+          content: Text('$e\n\n파일로 백업은 크기 제한 없이 내 악보 파일까지 함께 저장합니다.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('닫기')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('파일로 백업')),
+          ],
+        ),
+      );
+      if (useFile == true) await _handleFileBackup();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
