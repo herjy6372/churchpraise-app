@@ -82,6 +82,15 @@ python3 tool/convert_bible.py <원본.json> assets/bible/ko_krv.json
 
 릴리스 서명 파일(`android/key.properties`, `android/app/upload-keystore.jks`)도 포함되지 않습니다.
 
+## 보안
+
+- **백업 데이터**: Google 로그인 후 Firestore `users/{uid}` 문서 하나에 즐겨찾기·콘티·태그·필기·형광펜·읽기표 진도를 저장합니다. [`firestore.rules`](firestore.rules)는 로그인한 본인만 자기 문서를 읽고 쓸 수 있게 하고, 그 밖의 경로는 모두 거부합니다. 규칙을 바꾸면 Firebase 콘솔(Firestore Database → 규칙)에 게시해야 적용됩니다.
+- **Firebase 설정 파일**: `google-services.json`, `GoogleService-Info.plist`, `lib/firebase_options.dart`의 API 키는 앱에 포함되는 식별용 값이라 공개되어도 되며, 데이터 보호는 보안 규칙이 담당합니다.
+- **서명 키**: 릴리스 서명 파일은 `.gitignore`로 제외합니다.
+
+### 점검 기록
+- 2026.11.28 — `flutter analyze` 문제 0건, 단위 테스트 20개 통과. 커밋 기록 전체에서 비밀번호·개인키·토큰이 올라간 적이 없음을 확인. Firestore 규칙을 Firebase 에뮬레이터에서 6가지 경우(본인 문서 읽기·쓰기 허용, 남의 문서 읽기·쓰기·비로그인 읽기·다른 경로 쓰기 거부)로 시험해 통과하고, 콘솔에만 있던 규칙을 `firestore.rules`로 저장소에 추가
+
 ## 빌드
 
 ```bash
