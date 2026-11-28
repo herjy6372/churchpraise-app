@@ -39,7 +39,7 @@ lib/
 ├── data/                     새찬송가 645곡·교독문·태그 정적 데이터
 ├── models/                   찬송가·악보·콘티 모델
 ├── screens/                  화면 (성경, 성경읽기표, 새찬송가·악보, 예배문, 콘티, 악보 뷰어, 설정)
-├── services/                 성경 로드·검색, 형광펜, 2027 읽기표, 즐겨찾기, 콘티, 태그, 백업·복원
+├── services/                 성경 로드·검색, 형광펜, 2027 읽기표, 즐겨찾기, 콘티, 태그, 서버 백업·복원, 파일 백업(zip)
 └── widgets/                  필터·태그 편집 시트
 assets/
 ├── app_icon.png, app_icon_fg.png   앱 아이콘 원본 (flutter_launcher_icons)
@@ -54,7 +54,7 @@ docs/
     ├── phone/                휴대전화 스크린샷 1080×1920
     └── tablet/               7인치·10인치 태블릿 스크린샷 1920×1080
 tool/convert_bible.py         성경 역본 원본 JSON → 앱 형식 변환
-test/                         성경 역본별 검색, 읽기표, 형광펜 등 단위 테스트
+test/                         성경 역본별 검색, 읽기표, 형광펜, 파일 백업 등 단위 테스트
 church_website/               김천침례교회 홈페이지 (정적 HTML)
 PORTFOLIO.md                  프로젝트 상세 소개·작업 과정
 ```
@@ -81,6 +81,19 @@ python3 tool/convert_bible.py <원본.json> assets/bible/ko_krv.json
 ```
 
 릴리스 서명 파일(`android/key.properties`, `android/app/upload-keystore.jks`)도 포함되지 않습니다.
+
+## 백업과 복원
+
+설정 화면에서 두 가지 방식으로 데이터를 옮길 수 있습니다.
+
+| 방식 | 필요한 것 | 담기는 내용 | 저장 위치 |
+|---|---|---|---|
+| 서버 백업 (계정 및 동기화) | Google 로그인, 인터넷 | 즐겨찾기·콘티·태그·필기·형광펜·읽기표 진도 | Firestore `users/{uid}` 문서 (최대 1MB) |
+| 파일로 백업 (v1.6.0~) | 없음 | 위 내용 + **내 악보 원본 파일(PDF·이미지)** | 사용자가 고른 위치 (iOS 파일 앱, Android 다운로드·드라이브 등) |
+
+- 파일 백업은 `성경찬양_백업_날짜_시각.zip` 하나로 저장되며, 안에 `backup.json`(데이터와 내 악보 목록)과 `scores/`(악보 파일)가 들어 있습니다. 구현은 [`lib/services/local_backup_service.dart`](lib/services/local_backup_service.dart), 파일 저장·선택은 Android SAF와 iOS 문서 선택기를 MethodChannel로 연결했습니다.
+- 파일에서 복원하면 데이터는 덮어쓰고, 내 악보는 기존 것을 그대로 두고 백업에만 있는 것을 더합니다.
+- 다른 앱의 파일이나 손상된 파일은 거부하고, 앱이 쓰는 데이터 항목만 되살리며, 악보 파일은 앱이 정한 이름으로 악보 폴더 안에만 저장합니다. 데이터 형식이 맞지 않으면 원래 값으로 되돌립니다.
 
 ## 보안
 
