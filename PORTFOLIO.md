@@ -12,8 +12,8 @@
 | 성경 비교 보기 · 형광펜 | 성경 선택 (구약) | 성경 선택 (신약) | 여러 절 선택 |
 |:---:|:---:|:---:|:---:|
 | <img src="docs/screenshots/compare-20261122.jpg" width="190" alt="성경 비교 보기 (개역개정 + KJV)와 형광펜"> | <img src="docs/screenshots/books-ot-20261115.jpg" width="190" alt="구약 권 선택 (파란색)"> | <img src="docs/screenshots/books-nt-20261115.jpg" width="190" alt="신약 권 선택 (빨간색)"> | <img src="docs/screenshots/select-20261115.jpg" width="190" alt="여러 절 선택과 복사·형광펜"> |
-| **2027 성경읽기표** | **새찬송가** | **예배문** | |
-| <img src="docs/screenshots/reading-plan-20261115.jpg" width="190" alt="2027 성경읽기표"> | <img src="docs/screenshots/hymns-20261115.jpg" width="190" alt="새찬송가 탭"> | <img src="docs/screenshots/liturgy-20261115.jpg" width="190" alt="예배문 탭"> | |
+| **2027 성경읽기표** | **새찬송가** | **예배문** | **파일로 백업** |
+| <img src="docs/screenshots/reading-plan-20261115.jpg" width="190" alt="2027 성경읽기표"> | <img src="docs/screenshots/hymns-20261115.jpg" width="190" alt="새찬송가 탭"> | <img src="docs/screenshots/liturgy-20261115.jpg" width="190" alt="예배문 탭"> | <img src="docs/screenshots/file-backup-20261128.jpg" width="190" alt="설정의 파일로 백업·파일에서 복원"> |
 
 **태블릿 가로 · 비교 보기** (왼쪽 개역개정, 오른쪽 개역한글)
 
