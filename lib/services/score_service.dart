@@ -138,6 +138,19 @@ class ScoreService {
     await _save();
   }
 
+  /// 파일 백업에서 불러온 악보를 목록에 더한다. 같은 id가 이미 있으면 건너뛴다.
+  /// 더한 개수를 돌려준다.
+  Future<int> addRestoredScores(List<CustomScore> restored) async {
+    final existing = scores.value.map((s) => s.id).toSet();
+    final added = restored.where((s) => !existing.contains(s.id)).toList();
+    if (added.isEmpty) return 0;
+    final merged = [...scores.value, ...added]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    scores.value = merged;
+    await _save();
+    return added.length;
+  }
+
   CustomScore? findById(String id) {
     for (final s in scores.value) {
       if (s.id == id) return s;

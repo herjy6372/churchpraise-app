@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/app_settings.dart';
+import '../services/local_backup_service.dart';
 import '../services/sync_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -246,6 +247,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _handleFileBackup() async {
+    try {
+      final saved = await LocalBackupService.instance.exportToUserLocation();
+      if (!mounted) return;
+      if (saved) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('백업 파일을 저장했습니다.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('파일 백업 실패: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleFileRestore() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('파일에서 복원'),
+        content: const Text(
+            '백업 파일의 즐겨찾기·콘티·태그·필기·형광펜·읽기표 진도로 현재 기기의 데이터를 덮어씁니다.\n\n'
+            '내 악보는 지금 있는 악보를 그대로 두고, 백업에만 있는 악보를 더합니다.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('파일 선택')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      final r = await LocalBackupService.instance.importFromUserLocation();
+      if (r == null || !mounted) return;
+      final scoreText = r.skippedScores > 0
+          ? '내 악보 ${r.addedScores}개 추가 (이미 있는 ${r.skippedScores}개 제외)'
+          : '내 악보 ${r.addedScores}개 추가';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('복원 완료! $scoreText')),
+      );
+      setState(() {});
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('파일 복원 실패: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _handleSignOut() async {
     await SyncService.instance.signOut();
     if (mounted) setState(() { _lastBackup = null; });
@@ -382,6 +435,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                       ],
+
+                      const SizedBox(height: 20),
+
+                      // ── 기기에 파일로 백업 (로그인·인터넷 불필요) ──
+                      _SectionHeader(title: '파일로 백업'),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: ValueListenableBuilder<bool>(
+                            valueListenable: LocalBackupService.instance.busy,
+                            builder: (context, busy, _) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '즐겨찾기·콘티·태그·필기·형광펜·읽기표 진도와 내 악보 파일을 '
+                                  '하나의 백업 파일(.zip)로 기기에 저장합니다. 로그인 없이 사용할 수 있습니다.',
+                                  style: TextStyle(fontSize: 12.5, height: 1.5,
+                                      color: cs.onSurface.withValues(alpha: 0.65)),
+                                ),
+                                const SizedBox(height: 14),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: busy ? null : _handleFileBackup,
+                                        icon: busy
+                                            ? const SizedBox(width: 16, height: 16,
+                                                child: CircularProgressIndicator(strokeWidth: 2))
+                                            : const Icon(Icons.save_alt, size: 18),
+                                        label: const Text('파일로 백업'),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: busy ? null : _handleFileRestore,
+                                        icon: const Icon(Icons.folder_open_outlined, size: 18),
+                                        label: const Text('파일에서 복원'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
 
                       const SizedBox(height: 20),
 
