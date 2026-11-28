@@ -24,6 +24,7 @@
 
 | 버전 | 날짜 | 내용 | 상태 | 자세히 |
 |---|---|---|---|---|
+| 1.6.3 (예정) | 2026.11.29 | Firebase 라이브러리 메이저 업데이트, 로그인 취소 시 오류 문구 숨김 | 출시 준비 중 | 16번 |
 | 1.6.2 (빌드 17) | 2026.11.28 | 서버 백업이 1MB 한도를 넘으면 미리 알리고 '파일로 백업'으로 안내 | Google 검토 중 | 15번 |
 | 1.6.1 (빌드 16) | 2026.11.28 | 앱 재설치·기기 이동으로 앱 폴더 경로가 바뀌어도 내 악보 파일을 다시 찾도록 수정 | 출시 | 14번 |
 | 1.6.0 (빌드 15) | 2026.11.28 | 파일로 백업/복원 (로그인 없이 내 악보 파일까지 .zip 하나로 저장) | 출시 | 12번 |
@@ -593,3 +594,30 @@ test/server_backup_size_test.dart     # [신규] 서버 백업 크기 테스트 
 
 ### 🚀 4) 출시 (2026.11.28)
 - 1.6.1 게시 후 버전 `1.6.2+17`로 릴리스 App Bundle을 빌드해 **비공개 테스트(Alpha) 트랙**에 등록, 출시 노트 작성 후 **Google 검토에 제출** — 승인 후 직접 게시 예정
+
+---
+
+## 🔧 16. Firebase 라이브러리 메이저 업데이트 (다음 버전 1.6.3 예정)
+
+### 🎯 1) 배경
+- 2026.11.28 보안 점검에서 Firebase 패키지가 메이저 버전 하나씩 뒤처진 것을 확인 → 보안·호환성 패치를 계속 받기 위해 최신으로 올림
+
+### ⬆️ 2) 업데이트 내용
+- `firebase_core` 4 → **5.2**, `firebase_auth` 6 → **7.1**, `cloud_firestore` 6 → **7.2**
+- **iOS**: 새 `firebase-ios-sdk` 13과 `google_sign_in_ios` 6.3의 GoogleSignIn 9 요구가 충돌 → `google_sign_in_ios` **6.4.0**(GoogleSignIn 10 허용)으로 올려 Swift Package 의존성 해결
+- **Android**: 새 `firebase-auth`가 Kotlin 2.4 메타데이터로 빌드되어 기존 Kotlin 2.2.20 컴파일러가 읽지 못함 → Kotlin 플러그인 **2.3.20**으로 올리고, 폐기된 `kotlinOptions.jvmTarget`을 `kotlin { compilerOptions }`로 이전
+- 덤으로, Google 로그인 창을 닫으면 영문 예외(`GoogleSignInException…canceled`)가 그대로 보이던 것을 **조용히 넘어가도록** 하고, 그 밖의 실패는 한국어 안내로 표시
+
+### ✅ 3) 확인
+- `flutter analyze` 0건, 단위 테스트 31개 통과
+- Android 디버그 빌드, iOS 시뮬레이터 빌드 성공, iOS에서 앱 실행·Google 로그인 창 표시 확인
+- 실제 계정 로그인 후 서버 백업·복원은 출시 전에 실기기에서 확인 예정
+
+### 🗂 4) 변경된 파일
+```
+pubspec.yaml / pubspec.lock                 # [변경] Firebase 5·7·7.2, google_sign_in_ios 6.4
+android/settings.gradle.kts                 # [변경] Kotlin 플러그인 2.3.20
+android/app/build.gradle.kts                # [변경] kotlin.compilerOptions로 jvmTarget 지정
+ios/.../swiftpm/Package.resolved            # [변경] firebase-ios-sdk 13, GoogleSignIn 10
+lib/screens/settings_screen.dart            # [변경] 로그인 취소 시 안내 숨김
+```
