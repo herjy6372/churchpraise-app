@@ -2,6 +2,8 @@
 
 **성경&찬양** — 교회 예배·찬양팀을 위한 성경 · 새찬송가 & CCM 악보 뷰어 앱 (Flutter, Android / iOS).
 
+- 현재 버전 1.6.0 (빌드 15) · Google Play 비공개 테스트 · 스토어 카테고리: 도서/참고자료
+
 자세한 소개는 [PORTFOLIO.md](PORTFOLIO.md)를 참고하세요.
 
 - 포트폴리오 사이트: [herjy6372.github.io/portfolio](https://herjy6372.github.io/portfolio/)
@@ -99,7 +101,10 @@ python3 tool/convert_bible.py <원본.json> assets/bible/ko_krv.json
 
 비공개 테스트 참여자는 김천침례교회 홈페이지의 신청 페이지(`app-beta.html`, 메인 배너에서 새 창으로 열림)로 모집합니다.
 
-- 신청서로 Google 계정·이름·휴대폰 번호를 받아 Firestore `testerRequests`에 저장하고, 관리자가 Play Console 테스터 목록에 등록한 뒤 참여 안내 문자를 보냅니다.
+- 신청서로 Google 계정·이름·휴대폰 번호를 받아 Firestore `testerRequests`에 저장합니다. 관리자 운영 절차는 다음과 같습니다.
+  1. 관리자 페이지의 신청 목록에서 **대기 이메일 복사** → Play Console 비공개 테스트의 테스터 목록에 붙여넣기
+  2. 등록한 신청은 **등록 완료**로 표시하고, 개인 휴대폰으로 참여 안내 문자 발송 (사이트에는 Play 설치 링크를 노출하지 않음)
+  3. 테스트가 끝나면 신청 정보 **삭제**
 - 앱 업데이트에 맞춰 신청 페이지의 기능 소개를 함께 갱신합니다.
   - 2026.11.22 (v1.5.0) — "두 역본 비교 보기" 항목과 비교 보기 화면 스크린샷 추가
   - 2026.11.28 (v1.6.0) — "파일로 백업 — 로그인 없이 내 악보까지 기기에 저장" 항목 추가
