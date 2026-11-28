@@ -2,7 +2,7 @@ name: churchpraise
 description: "성경&찬양 - 성경, 새찬송가, 예배문 & 악보 뷰어"
 publish_to: 'none'
 
-version: 1.5.0+14
+version: 1.6.0+15
 
 environment:
   sdk: ^3.11.5
