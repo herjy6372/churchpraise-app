@@ -46,6 +46,7 @@ assets/
 ├── bible/                    성경 역본 JSON (저장소에 없음)
 └── hymns_pdf/                새찬송가 악보 PDF (저장소에 없음)
 android/, ios/                플랫폼 설정 (Firebase 설정 포함, 서명 키 제외)
+firestore.rules               Firestore 보안 규칙 (본인 users/{uid} 문서만 읽기·쓰기, 콘솔에 게시된 내용과 동일)
 docs/
 ├── screenshots/              README·PORTFOLIO.md용 앱 스크린샷
 └── play-store/               Google Play 스토어 이미지
